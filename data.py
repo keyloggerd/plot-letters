@@ -5,8 +5,8 @@ from numpy.fft import fft
 from statistics import mean, stdev
 import re
 
-f1 = 'gibberish_11_12'
-f2 = 'gibberish_11_12_logkeys'
+f1 = 'data/alphabet_02_19'
+f2 = 'data/alphabet_02_19_logkeys'
 
 
 class AccEntry(object):

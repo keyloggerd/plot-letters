@@ -118,17 +118,29 @@ with open(f2) as f:  # logkey data
         lk_entry_list.append(LKEntry(line[2]+"."+line[4], line[6]))
 
 
-checkLs = ['a','b','l']
+checkLs = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm', 'n', 'o', 'p', 'q', 'r', 's', 't', 'u', 'v', 'w', 'x', 'y', 'z']
 
+yeet = {}
+yeeteronie = {}
 for letter in checkLs:
     window_list = []
     win_mags = []
+    yeeteronie[letter] = []
     key_presses = list(filter(lambda x: x.key == letter, lk_entry_list))
     for k in key_presses:
         window_list.append(Window(letter, acc_entry_list, get_index_of_matching_time(acc_entry_list, k.time)))
     for window in window_list:
-        window.plot_window()
+        # window.plot_window()
+        yeeteronie[letter].append(window.get_magnitudes())
         win_mags.append(window.get_teddy_mags())
     print('character: ' + letter + ' mags')
     for win_mag in win_mags:
         print(' mag = {}'.format(win_mag))
+    yeet[letter] = win_mags
+for letter in yeet:
+    plt.hist(yeet[letter], bins=100, range=(60, 350))
+    plt.title(letter)
+    plt.show()
+# for letter in yeeteronie:
+    # plt.hist(yeeteronie[letter], bins=100, )
+    # plt.show()

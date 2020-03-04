@@ -5,7 +5,6 @@ from numpy.fft import fft
 from statistics import mean, stdev
 import re
 
-
 class AccEntry(object):
     def __init__(self, lst):
         lst = lst.split()
@@ -33,11 +32,32 @@ class AccEntry(object):
     def get_magnitude(self):
         return self.get_maggy()
 
+def make_AccEntry_List(acc_file):
+    # accData entries look like [String time, String x, String y, String z]
+    acc_entry_list = []
+    with open(acc_file) as f:  # accelerametor data
+        content = f.read()
+        accData = content.splitlines()[:-1]
+        for i in accData:
+            acc_entry_list.append(AccEntry(i))
+    return acc_entry_list
 
 class LKEntry(object):
     def __init__(self, time, key):
         self.time = float(time)
         self.key = key
+
+def make_LKEntry_List(lk_file):
+    # lkData entries look like [String time, '>', String key]
+    lk_entry_list = []
+    with open(lk_file) as f: # logkey data
+        content = f.read()
+        pattern = re.compile("^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2} \d+ - \d+ > \w")
+        lkData = [a for a in content.splitlines() if pattern.match(a) is not None]
+        for line in lkData:
+            line = line.split()
+            lk_entry_list.append(LKEntry(line[2]+"."+line[4], line[6]))
+    return lk_entry_list
 
 
 class Window(object):
@@ -95,6 +115,38 @@ class Window(object):
         axs[2].grid(True)
 
         plt.show()
+
+def make_window_dict(checkLs,acc_entry_list=[],lk_entry_list=[]):
+    window_dict = {}
+    if len(acc_entry_list) == 0 or len(lk_entry_list) == 0:
+        print("nah dude")
+        return
+    else:
+        for letter in checkLs:
+            window_dict[letter] = []
+            key_presses = list(filter(lambda x: x.key == letter, lk_entry_list))
+            for k in key_presses:
+                window_dict[letter].append(Window(letter, acc_entry_list, get_index_of_matching_time(acc_entry_list, k.time)))
+    return window_dict
+
+def add_non_keypress(window_dict,acc_file):
+    times = []
+    window_dict['none'] = []
+    for letter in window_dict:
+        for window in window_dict[letter]:
+            for acc_entry in window.window:
+                times.append(acc_entry.get_time())
+    with open(acc_file) as f:
+        content = f.read()
+        accData = content.splitlines()[:-1]
+        unique_accs = []
+        for lst in accData:
+            t = float(lst.split()[0])
+            if t not in times:
+                unique_accs.append(AccEntry(lst))
+            elif len(unique_accs) > 0:
+                window_dict['none'].append(Window('none',unique_accs,int(len(unique_accs)/2),len(unique_accs)))
+                unique_accs = []
 
 def get_index_of_matching_time(acc_entry_list, time):
     for i in range(len(acc_entry_list)-1):

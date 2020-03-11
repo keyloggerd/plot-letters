@@ -76,7 +76,7 @@ class Window(object):
         win_mag = self.get_magnitudes()
         return 10000 * stdev(win_mag) * np.sqrt(max(win_mag)**2 + min(win_mag)**2)
 
-    def plot_window(self):
+    def plot_window(self,window_dict,norm=True):
         print(self.window)
         plt.rcParams.update({'font.size': 32})
         fig, axs = plt.subplots(3, 1, constrained_layout=True)
@@ -93,18 +93,30 @@ class Window(object):
             z.append(acc_ent.get_z())
             t.append(float('%.3f'%(acc_ent.get_time()%1000)))
 
+        if norm:
+            times = get_window_times(window_dict)
+            norm_fac =float('%.3f'%(min(times)%1000))
+            t = [x - norm_fac for x in t]
+
+        acc = get_window_acc(window_dict)
+        x_all = [a[0] for a in acc]
+        y_all = [a[1] for a in acc]
+        z_all = [a[2] for a in acc]
+
         # plot x
         axs[0].plot(t,x)
         axs[0].set_title('Acceleration in x direction')
-        axs[0].set_xlabel('time')
+        # axs[0].set_xlabel('time')
         axs[0].set_ylabel('G')
+        axs[0].set_ylim(min(x_all),max(x_all))
         axs[0].grid(True)
 
         # plot y
         axs[1].plot(t,y)
         axs[1].set_title('Acceleration in y direction')
-        axs[1].set_xlabel('time')
+        # axs[1].set_xlabel('time')
         axs[1].set_ylabel('G')
+        axs[1].set_ylim(min(y_all),max(y_all))
         axs[1].grid(True)
 
         # plot z
@@ -112,6 +124,7 @@ class Window(object):
         axs[2].set_title('Acceleration in z direction')
         axs[2].set_xlabel('time')
         axs[2].set_ylabel('G')
+        axs[2].set_ylim(min(z_all),max(z_all))
         axs[2].grid(True)
 
         plt.show()
@@ -129,13 +142,25 @@ def make_window_dict(checkLs,acc_entry_list=[],lk_entry_list=[]):
                 window_dict[letter].append(Window(letter, acc_entry_list, get_index_of_matching_time(acc_entry_list, k.time)))
     return window_dict
 
-def add_non_keypress(window_dict,acc_file):
+def get_window_times(window_dict):
     times = []
-    window_dict['none'] = []
     for letter in window_dict:
         for window in window_dict[letter]:
             for acc_entry in window.window:
                 times.append(acc_entry.get_time())
+    return times
+
+def get_window_acc(window_dict):
+    acc = []
+    for letter in window_dict:
+        for window in window_dict[letter]:
+            for acc_entry in window.window:
+                acc.append(acc_entry.get_acceleration())
+    return acc
+
+def add_non_keypress(window_dict,acc_file):
+    times = get_window_times(window_dict)
+    window_dict['none'] = []
     with open(acc_file) as f:
         content = f.read()
         accData = content.splitlines()[:-1]

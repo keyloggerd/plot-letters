@@ -5,6 +5,8 @@ from numpy.fft import fft
 from statistics import mean, stdev
 import re
 
+default_range = 20
+
 class AccEntry(object):
     def __init__(self, lst):
         lst = lst.split()
@@ -61,11 +63,11 @@ def make_LKEntry_List(lk_file):
 
 
 class Window(object):
-    def __init__(self, letter, acc_entry_list, center_idx, rng=20):
+    def __init__(self, letter, acc_entry_list, center_idx, rng=default_range):
         self.letter = letter
         self.window = self.get_range(acc_entry_list, center_idx, rng)
 
-    def get_range(self, vectors, idx, rng=20):
+    def get_range(self, vectors, idx, rng=default_range):
         # return vectors[max(0, idx-int(rng/2)):min(len(vectors), idx+int(rng/2))]
         return vectors[idx-int(rng/2):idx+int(rng/2)]
 
@@ -158,7 +160,7 @@ def get_window_acc(window_dict):
                 acc.append(acc_entry.get_acceleration())
     return acc
 
-def add_non_keypress(window_dict,acc_file):
+def add_non_keypress(window_dict,acc_file,split=False,rng=default_range):
     times = get_window_times(window_dict)
     window_dict['none'] = []
     with open(acc_file) as f:
@@ -170,7 +172,12 @@ def add_non_keypress(window_dict,acc_file):
             if t not in times:
                 unique_accs.append(AccEntry(lst))
             elif len(unique_accs) > 0:
-                window_dict['none'].append(Window('none',unique_accs,int(len(unique_accs)/2),len(unique_accs)))
+                if split:
+                    for i in range(0,len(unique_accs),rng):
+                        if i+rng < len(unique_accs):
+                            window_dict['none'].append(Window('none',unique_accs,i+int(rng/2),rng))
+                else:
+                    window_dict['none'].append(Window('none',unique_accs,int(len(unique_accs)/2),len(unique_accs)))
                 unique_accs = []
 
 def get_index_of_matching_time(acc_entry_list, time):

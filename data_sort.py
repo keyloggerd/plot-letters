@@ -61,10 +61,10 @@ def make_LKEntry_List(lk_files):
     for lk_file in lk_files:
         with open(lk_file) as f: # logkey data
             content = f.read()
-            pattern = re.compile("^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2} \d+ - \d+ > \w")
+            pattern = re.compile("^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2} \d+ - \d+ > [\w\s]")
             lkData = [a for a in content.splitlines() if pattern.match(a) is not None]
             for line in lkData:
-                line = line.split()
+                line = line.split(' ')
                 lk_entry_list.append(LKEntry(line[2]+"."+line[4], line[6]))
     return lk_entry_list
 
@@ -237,26 +237,21 @@ def get_index_of_matching_time(acc_entry_list, time):
         if float(acc_entry_list[i].time) <= time and float(acc_entry_list[i+1].time) >= time:
             return i
 
-#def get_finger(window_dict):
-#    pointer={'r', 't', 'y', 'u', 'f', 'g', 'h', 'j', 'v', 'b', 'n', 'm'}
-#    middle={'e', 'd', 'c', 'i', 'k'}
-#    ring = {'w', 's', 'x', 'i', 'k'}
-#    pinky = {'q','a','z','p'}
-#    for letter in window_dict:
-#        if letter in pointer:
-#            for window in window_dict[letter]:
-                
 def test_stuff():
 
     f1 = 'data/alphabet_04_10'
-    f2 = 'data/alphabet_04_10_logkeys'
+    f2 = 'data/alice_11_12_logkeys'
     f3 = 'data/alphabet_02_19'
     f4 = 'data/alphabet_02_19_logkeys'
 
     # letters to look for
-    checkLs = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm', 'n', 'o', 'p', 'q', 'r', 's', 't', 'u', 'v', 'w', 'x', 'y', 'z']
+    checkLs = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', '', 'k', 'l', 'm', 'n', 'o', 'p', 'q', 'r', 's', 't', 'u', 'v', 'w', 'x', 'y', 'z']
     acc_entry_list = make_AccEntry_List(f1)
     lk_entry_list = make_LKEntry_List(f2)
+
+    # for l in lk_entry_list:
+        # print(l.key)
+    input()
     
     # df = make_dataframe(checkLs,acc_entry_list,lk_entry_list)
     start = time.time()
@@ -281,4 +276,4 @@ def test_stuff():
     return df
     
 
-df = test_stuff()
+# df = test_stuff()

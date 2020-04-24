@@ -4,9 +4,6 @@ import numpy as np
 from numpy.fft import fft
 from statistics import mean, stdev
 import re
-import pandas as pd
-
-import time
 
 default_range = 20
 
@@ -37,16 +34,14 @@ class AccEntry(object):
     def get_magnitude(self):
         return self.get_maggy()
 
-def make_AccEntry_List(acc_files):
+def make_AccEntry_List(acc_file):
     # accData entries look like [String time, String x, String y, String z]
-    if not isinstance(acc_files,list): acc_files = [acc_files]
     acc_entry_list = []
-    for acc_file in acc_files:
-        with open(acc_file) as f:  # accelerametor data
-            content = f.read()
-            accData = content.splitlines()[:-1]
-            for i in accData:
-                acc_entry_list.append(AccEntry(i))
+    with open(acc_file) as f:  # accelerametor data
+        content = f.read()
+        accData = content.splitlines()[:-1]
+        for i in accData:
+            acc_entry_list.append(AccEntry(i))
     return acc_entry_list
 
 class LKEntry(object):
@@ -54,18 +49,16 @@ class LKEntry(object):
         self.time = float(time)
         self.key = key
 
-def make_LKEntry_List(lk_files):
+def make_LKEntry_List(lk_file):
     # lkData entries look like [String time, '>', String key]
-    if not isinstance(lk_files,list): lk_files = [lk_files]
     lk_entry_list = []
-    for lk_file in lk_files:
-        with open(lk_file) as f: # logkey data
-            content = f.read()
-            pattern = re.compile("^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2} \d+ - \d+ > \w")
-            lkData = [a for a in content.splitlines() if pattern.match(a) is not None]
-            for line in lkData:
-                line = line.split()
-                lk_entry_list.append(LKEntry(line[2]+"."+line[4], line[6]))
+    with open(lk_file) as f: # logkey data
+        content = f.read()
+        pattern = re.compile("^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2} \d+ - \d+ > \w")
+        lkData = [a for a in content.splitlines() if pattern.match(a) is not None]
+        for line in lkData:
+            line = line.split()
+            lk_entry_list.append(LKEntry(line[2]+"."+line[4], line[6]))
     return lk_entry_list
 
 
@@ -139,52 +132,25 @@ class Window(object):
         plt.show()
 
 def make_window_dict(checkLs,acc_entry_list=[],lk_entry_list=[]):
+    window_dict = {}
     if len(acc_entry_list) == 0 or len(lk_entry_list) == 0:
         print("nah dude")
         return
     else:
-        window_dict = {}
         for letter in checkLs:
             window_dict[letter] = []
             key_presses = list(filter(lambda x: x.key == letter, lk_entry_list))
             for k in key_presses:
-                window_dict[letter].append(Window(letter, acc_entry_list, get_index_of_matching_time(acc_entry_list, k.time)))
+                if(get_index_of_matching_time(acc_entry_list, k.time) != None):
+                    window_dict[letter].append(Window(letter, acc_entry_list, get_index_of_matching_time(acc_entry_list, k.time)))
     return window_dict
 
-def make_dataframe(checkLs,acc_entry_list=[],lk_entry_list=[],rng=default_range):
-    if len(acc_entry_list) == 0 or len(lk_entry_list) == 0:
-        print("nah dude")
-        return
-    else:
-        # df = pd.DataFrame()
-        df_list = []
-        for lk_entry in lk_entry_list:
-            if lk_entry.key.isalpha():
-                idx = get_index_of_matching_time(acc_entry_list,lk_entry.time)
-                acc_sub = acc_entry_list[idx-int(rng/2):idx+int(rng/2)]
-                # print(acc_sub)
-                # acc_sub_list = [(a.get_time,a.get_acceleration) for a in acc_sub]
-                for acc in acc_sub:
-                    df_list.append([lk_entry.key,acc.get_time(),acc.get_x(),acc.get_y(),acc.get_z()])
-                # for acc in acc_sub:
-                    # df_entry = pd.DataFrame([[lk_entry.key,acc.get_time(),acc.get_x(),acc.get_y(),acc.get_z()]],columns=['letter','time','x','y','z'])
-                    # df = df.append(df_entry)
-        df = pd.DataFrame(df_list,columns=['letter','time','x','y','z'])
-        print('sorting')
-        df.sort_values('time')
-        print('done sorting')
-        print(df)
-        return df
-
 def get_window_times(window_dict):
-    if isinstance(window_dict,dict):
-        times = []
-        for letter in window_dict:
-            for window in window_dict[letter]:
-                for acc_entry in window.window:
-                    times.append(acc_entry.get_time())
-    elif isinstance(window_dict,pd.DataFrame):
-        times = window_dict['time'].values.tolist()
+    times = []
+    for letter in window_dict:
+        for window in window_dict[letter]:
+            for acc_entry in window.window:
+                times.append(acc_entry.get_time())
     return times
 
 def get_window_acc(window_dict):
@@ -195,80 +161,41 @@ def get_window_acc(window_dict):
                 acc.append(acc_entry.get_acceleration())
     return acc
 
-def add_non_keypress(data,acc_files,split=False,rng=default_range):
-    if not isinstance(acc_files,list): acc_files = [acc_files]
-    times = get_window_times(data)
-    if isinstance(data,dict):
-        data['none'] = []
-    for acc_file in acc_files:
-        with open(acc_file) as f:
-            content = f.read()
-            accData = content.splitlines()[:-1]
-            unique_accs = []
-            for lst in accData:
-                t = float(lst.split()[0])
-                if t not in times:
-                    unique_accs.append(AccEntry(lst))
-                elif len(unique_accs) > 0:
-                    if split:
-                        for i in range(0,len(unique_accs),rng):
-                            if i+rng < len(unique_accs):
-                                if isinstance(data,dict):
-                                    data['none'].append(Window('none',unique_accs,i+int(rng/2),rng))
-                                elif isinstance(data,pd.DataFrame):
-                                    data_sub = []
-                                    for j in range(i,i+rng):
-                                        data_sub.append(['none',unique_accs[j].get_time(),unique_accs[j].get_x(),unique_accs[j].get_y(),unique_accs[j].get_z()])
-                                    data = data.append(pd.DataFrame(data_sub,columns=['letter','time','x','y','z']),ignore_index=True)
-                    else:
-                        if isinstance(data,dict):
-                            data['none'].append(Window('none',unique_accs,int(len(unique_accs)/2),len(unique_accs)))
-                        elif isinstance(data,pd.DataFrame):
-                            data_sub = []
-                            for j in range(len(unique_accs)):
-                                data_sub.append(['none',unique_accs[j].get_time(),unique_accs[j].get_x(),unique_accs[j].get_y(),unique_accs[j].get_z()])
-                            data.append(pd.DataFrame(data_sub),ignore_index=True)
-                    unique_accs = []
-    return data
+def add_non_keypress(window_dict,acc_file,split=False,rng=default_range):
+    times = get_window_times(window_dict)
+    window_dict['none'] = []
+    with open(acc_file) as f:
+        content = f.read()
+        accData = content.splitlines()[:-1]
+        unique_accs = []
+        for lst in accData:
+            t = float(lst.split()[0])
+            if t not in times:
+                unique_accs.append(AccEntry(lst))
+            elif len(unique_accs) > 0:
+                if split:
+                    for i in range(0,len(unique_accs),rng):
+                        if i+rng < len(unique_accs):
+                            window_dict['none'].append(Window('none',unique_accs,i+int(rng/2),rng))
+                else:
+                    window_dict['none'].append(Window('none',unique_accs,int(len(unique_accs)/2),len(unique_accs)))
+                unique_accs = []
 
 def get_index_of_matching_time(acc_entry_list, time):
     for i in range(len(acc_entry_list)-1):
         if float(acc_entry_list[i].time) <= time and float(acc_entry_list[i+1].time) >= time:
             return i
 
-def test_stuff():
+#def get_finger(window_dict):
+#    pointer={'r', 't', 'y', 'u', 'f', 'g', 'h', 'j', 'v', 'b', 'n', 'm'}
+#    middle={'e', 'd', 'c', 'i', 'k'}
+#    ring = {'w', 's', 'x', 'i', 'k'}
+#    pinky = {'q','a','z','p'}
+#    for letter in window_dict:
+#        if letter in pointer:
+#            for window in window_dict[letter]:
+                
 
-    f1 = 'data/alphabet_04_10'
-    f2 = 'data/alphabet_04_10_logkeys'
-    f3 = 'data/alphabet_02_19'
-    f4 = 'data/alphabet_02_19_logkeys'
 
-    # letters to look for
-    checkLs = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm', 'n', 'o', 'p', 'q', 'r', 's', 't', 'u', 'v', 'w', 'x', 'y', 'z']
-    acc_entry_list = make_AccEntry_List(f1)
-    lk_entry_list = make_LKEntry_List(f2)
-    
-    # df = make_dataframe(checkLs,acc_entry_list,lk_entry_list)
-    start = time.time()
-    df = make_dataframe(checkLs,acc_entry_list,lk_entry_list)
-    end = time.time()
-    print('first function: ' + str(end-start))
-    start = end
-    window_dict = make_window_dict(checkLs,acc_entry_list,lk_entry_list)
-    end = time.time()
-    print('second function: ' + str(end-start))
 
-    start = time.time()
-    df = add_non_keypress(df,f1,split=True)
-    end = time.time()
-    print('third function: ' + str(end-start))
-    start = time.time()
-    window_dict = add_non_keypress(window_dict,f1,split=True)
-    end = time.time()
-    print('fourth function: ' + str(end-start))
-    print(df)
 
-    return df
-    
-
-df = test_stuff()
